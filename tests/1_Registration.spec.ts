@@ -1,17 +1,31 @@
 import { test, expect } from '@playwright/test';
 import {RegistrationPage} from "../pages/Registration.page";
 import {PersonModel} from "../userModel/person.model";
+import {fetchEmail} from "../services/gmailVerification.service";
+import * as fs from "node:fs";
+
 
 test('Doing registration', async ({ page }) => {
-
+  // making objects of the page and usermodel
   const registrationPage = new RegistrationPage(page);
   const randomUser = new PersonModel();
 
+  // set up registration url and go for registration
   await page.goto('/register');
-
   await registrationPage.fillRegistration(randomUser);
 
+  // give 5s for registration email to be appeared
+  await page.waitForTimeout(5000);
+  const emailData = await fetchEmail();
+  expect(emailData).toContain("Road to Career");
 
+  // reading from users.json
+  const rawData = fs.readFileSync('utils/users.json', 'utf8');
+  const users = rawData ? JSON.parse(rawData) : [];
+  // saving user details on user.json
+  users.push(randomUser);
+  // writing back to users.json
+  fs.writeFileSync('utils/users.json', JSON.stringify(users, null, 2));
 
   await page.pause();
 })
