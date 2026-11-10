@@ -7,5 +7,41 @@
     "phoneNumber": "01716025734",
     "address": "8613 Cromwell Road Apt. 509",
     "gender": "Female"
+  },
+  {
+    "firstName": "Elmore",
+    "lastName": "Cruickshank",
+    "email": "ihrifat.rr+64@gmail.com",
+    "password": "izJ8n5UcI1Ho9sx",
+    "phoneNumber": "01739299421",
+    "address": "64493 Huels Vista Apt. 682",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Fermin",
+    "lastName": "Labadie",
+    "email": "ihrifat.rr+80@gmail.com",
+    "password": "PD7ZtbHjVUz7yxM",
+    "phoneNumber": "01762923537",
+    "address": "9093 N 7th Street Suite 659",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Kamille",
+    "lastName": "Dibbert",
+    "email": "ihrifat.rr+42@gmail.com",
+    "password": "8joY0jeEfT8eqBK",
+    "phoneNumber": "01714922960",
+    "address": "1572 Osinski-Gislason Motorway Suite 208",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Felicita",
+    "lastName": "Bins",
+    "email": "ihrifat.rr+48@gmail.com",
+    "password": "SBaAx7brn3Ulvx3",
+    "phoneNumber": "01774721124",
+    "address": "20768 Boehm-Will Trafficway Apt. 978",
+    "gender": "Male"
   }
 ]

@@ -4,6 +4,8 @@ import {PersonModel} from "../userModel/person.model";
 import {fetchEmail} from "../services/gmailVerification.service";
 import * as fs from "node:fs";
 
+// reset storageState so registration always runs as a guest user
+test.use({storageState: {cookies: [], origins: []}});
 
 test('Doing registration', async ({ page }) => {
   // making objects of the page and usermodel

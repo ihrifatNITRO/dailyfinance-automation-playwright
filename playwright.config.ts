@@ -43,42 +43,32 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
 
-  /* Configure projects for major browsers */
+  /* Configure projects */
   projects: [
+    // 1. Auth Setup: Runs login and saves session to playwright/.auth/user.json
     {
-      name: 'chromium',
-      use: {},
+      name: 'setup',
+      testMatch: /.*\.setup\.ts/,
     },
 
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-    //
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
+    // 2. Guest/Unauthenticated tests: Registration & Login UI (NO setup dependency)
+    {
+      name: 'guest',
+      testMatch: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/],
+      use: {
+        storageState: { cookies: [], origins: [] },
+      },
+    },
 
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
+    // 3. Authenticated tests: Feature & POM tests (Depends on setup & auto-logged in)
+    {
+      name: 'authenticated',
+      testIgnore: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /.*\.setup\.ts/],
+      use: {
+        storageState: 'playwright/.auth/user.json',
+      },
+      dependencies: ['setup'],
+    },
   ],
 
   /* Run your local dev server before starting the tests */

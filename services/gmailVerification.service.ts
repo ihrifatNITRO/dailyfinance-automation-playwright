@@ -8,7 +8,7 @@ async function fetchId(){
         {
             baseURL: "https://gmail.googleapis.com",
             extraHTTPHeaders: {
-                "Authorization": `Bearer ${process.env.gmail_access_token}`
+                "Authorization": `Bearer ${process.env.GMAIL_ACCESS_TOKEN}`
             }
         }
     );
@@ -31,7 +31,7 @@ export async function fetchEmail(){
         {
             baseURL: "https://gmail.googleapis.com",
             extraHTTPHeaders: {
-                "Authorization": `Bearer ${process.env.gmail_access_token}`
+                "Authorization": `Bearer ${process.env.GMAIL_ACCESS_TOKEN}`
             }
         }
     );
