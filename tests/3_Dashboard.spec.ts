@@ -10,5 +10,6 @@ test("Adding 2 items", async ({page}) => {
         await dashboardPage.clickAddCost();
         await dashboardPage.addNewCost();
     }
-    await page.pause();
+
+    await dashboardPage.exportTableToCsv();
 })
