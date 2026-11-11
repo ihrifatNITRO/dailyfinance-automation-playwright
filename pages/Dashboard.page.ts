@@ -12,6 +12,8 @@ export class DashboardPage {
     remarks: Locator;
     btnSubmit: Locator;
     table: Locator;
+    btnAccount: Locator;
+    menuLogout: Locator;
 
     constructor(page: Page) {
         this.page = page;
@@ -23,6 +25,8 @@ export class DashboardPage {
         this.remarks = page.getByRole("textbox", { name: "Remarks" });
         this.btnSubmit = page.getByRole("button", { name: "Submit" });
         this.table = page.getByRole("table");
+        this.btnAccount = page.getByRole('button', { name: 'account of current user' });
+        this.menuLogout = page.getByRole('menuitem', { name: 'Logout' });
     }
 
     async clickAddCost() {
@@ -41,6 +45,10 @@ export class DashboardPage {
             await dialog.accept();
         });
         await this.btnSubmit.click();
+    }
+    async logoutFromDashboard() {
+        await this.btnAccount.click();
+        await this.menuLogout.click();
     }
 
     async exportTableToCsv(filePath: string = "utils/dashboard_table.csv") {
@@ -94,4 +102,5 @@ export class DashboardPage {
         // 3. Write file (supports both csv and txt based on filePath)
         fs.writeFileSync(filePath, csvLines.join("\n"), "utf8");
     }
+
 }

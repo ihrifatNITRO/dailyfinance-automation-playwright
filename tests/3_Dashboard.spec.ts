@@ -12,4 +12,6 @@ test("Adding 2 items", async ({page}) => {
     }
 
     await dashboardPage.exportTableToCsv();
+    await dashboardPage.logoutFromDashboard();
+
 })
