@@ -54,7 +54,7 @@ export default defineConfig({
     // 2. Guest/Unauthenticated tests: Registration & Login UI (NO setup dependency)
     {
       name: 'guest',
-      testMatch: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/],
+      testMatch: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /4_ResetPassword\.spec\.ts/],
       use: {
         storageState: { cookies: [], origins: [] },
       },
@@ -63,7 +63,7 @@ export default defineConfig({
     // 3. Authenticated tests: Feature & POM tests (Depends on setup & auto-logged in)
     {
       name: 'authenticated',
-      testIgnore: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /.*\.setup\.ts/],
+      testIgnore: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /4_ResetPassword\.spec\.ts/, /.*\.setup\.ts/],
       use: {
         storageState: 'playwright/.auth/user.json',
       },
