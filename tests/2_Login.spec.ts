@@ -1,5 +1,6 @@
 import {test, expect} from "@playwright/test";
 import {LoginPage} from "../pages/Login.page";
+// @ts-ignore
 import * as fs from "node:fs";
 
 // Run as a guest user when testing login page specifically
@@ -25,5 +26,5 @@ test("Doing login", async ({ page }) => {
     //     return localStorage.getItem("authToken");
     // });
     // fs.appendFileSync('.env', `\nAUTH_TOKEN=${authToken}`);
-    await page.pause();
+    // await page.pause();
 })

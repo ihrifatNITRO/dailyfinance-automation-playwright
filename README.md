@@ -7,7 +7,7 @@
 [![Dotenv](https://img.shields.io/badge/Dotenv-18.0.10-ECD53F?logo=dotenv&logoColor=black)](https://github.com/motdotla/dotenv)
 [![Design Pattern](https://img.shields.io/badge/Design%20Pattern-Page%20Object%20Model%20(POM)-brightgreen)](#architecture--design-pattern)
 
-A robust, scalable UI and API test automation framework for the **Daily Finance** web application ([https://dailyfinance.roadtocareer.net/](https://dailyfinance.roadtocareer.net/)). Built using **TypeScript**, **Playwright Test**, and **Faker.js**, following enterprise-grade **Page Object Model (POM)** principles, dynamic data generation, Google Gmail REST API integration for email verification and password reset workflows, session state persistence (`storageState`), and end-to-end integration workflows.
+A robust, scalable UI and API test automation framework for the **Daily Finance** web application ([https://dailyfinance.roadtocareer.net/](https://dailyfinance.roadtocareer.net/)). Built using **TypeScript**, **Playwright Test**, and **Faker.js**, following enterprise-grade **Page Object Model (POM)** principles, dynamic data generation, Google Gmail REST API integration with resilient asynchronous polling for email verification and password reset workflows, session state persistence (`storageState`), and end-to-end user lifecycle integration.
 
 ---
 
@@ -30,12 +30,13 @@ A robust, scalable UI and API test automation framework for the **Daily Finance*
 
 ## Architecture & Design Pattern
 
-The framework is architected for high maintainability, reusability, and readability:
+The framework is architected for high maintainability, reusability, and stability:
 
-- **Page Object Model (POM):** Clean separation between page web element locators (`page.getByRole`, `page.locator`), user interactions/actions in `pages/`, and validation assertions in `tests/`.
+- **Page Object Model (POM):** Clean separation between page web element locators (`page.getByRole`, `page.locator`), user interactions/actions in `pages/`, and test validations in `tests/`.
 - **Modular Data Modeling:** Encapsulates synthetic user profile generation within `PersonModel` (`userModel/person.model.ts`), leveraging `@faker-js/faker` for realistic, collision-free dynamic test data per execution.
-- **Third-Party API Integration (Gmail API):** Custom API service (`services/gmailVerification.service.ts`) interacting with the Google Gmail REST API v1 using Playwright's `request` context and OAuth2 Bearer authentication to programmatically fetch activation emails and password reset links.
-- **Session & State Management (`storageState`):** Uses Playwright's native authentication state persistence (`playwright/.auth/user.json`) via `auth.setup.ts`. Authenticates once and automatically injects session cookies and `localStorage` across authenticated test suites while isolating unauthenticated guest tests.
+- **Third-Party API Integration (Gmail API):** Custom API service (`services/gmailVerification.service.ts`) interacting with the Google Gmail REST API v1 using Playwright's `request` context and OAuth2 Bearer authentication to programmatically fetch activation emails and password reset links. Features HTTP response verification (`response.ok()`), context lifecycle cleanup (`api.dispose()`), and recipient-based query filtering (`q: "to:..."`).
+- **Resilient Dynamic Polling:** Uses Playwright's `expect.poll()` in email-dependent tests (`1_Registration.spec.ts` and `5_ResetPassword.spec.ts`) instead of fragile static timeouts (`waitForTimeout`), polling Gmail dynamically until the message arrives.
+- **Session & State Management (`storageState`):** Uses Playwright's native authentication state persistence (`playwright/.auth/user.json`) captured via `3_Auth.spec.ts`. Default `storageState` is configured in `playwright.config.ts` for authenticated tests (`4_Dashboard.spec.ts`, `6_Profile.spec.ts`), while unauthenticated guest tests (`1_Registration.spec.ts`, `2_Login.spec.ts`, `5_ResetPassword.spec.ts`) explicitly reset context via `test.use({ storageState: { cookies: [], origins: [] } })`.
 - **Dynamic Table Scraping & Export:** Built-in automated pagination traversal and HTML table parsing inside `DashboardPage` to extract and export active expense records into formatted CSV datasets (`utils/dashboard_table.csv`).
 - **Data Persistence:** Synchronizes newly registered user credentials and updated passwords directly into structured JSON (`utils/users.json`) across sequential test runs.
 
@@ -43,7 +44,7 @@ The framework is architected for high maintainability, reusability, and readabil
 
 ## Playwright Configuration Architecture
 
-The test runner configuration (`playwright.config.ts`) is customized from standard defaults to support environment-driven secrets, headed debug visibility, cross-test state isolation, and sequential project dependency execution:
+The test runner configuration (`playwright.config.ts`) is customized from standard defaults to support environment-driven secrets, headed debug visibility, sequential test ordering, and session reuse:
 
 ### Key Configuration Directives & Rationale
 
@@ -52,31 +53,17 @@ The test runner configuration (`playwright.config.ts`) is customized from standa
 | **Environment Secrets (`dotenv`)** | `dotenv.config({ path: path.resolve(__dirname, '.env') })` | Resolves absolute `.env` path dynamically so Google OAuth2 credentials (`GMAIL_ACCESS_TOKEN`) load seamlessly regardless of execution directory. |
 | **Base Application URL** | `baseURL: 'https://dailyfinance.roadtocareer.net/'` | Normalizes target routing so POM page models use clean relative paths (e.g., `page.goto('/register')`, `page.goto('/user')`). |
 | **Headed Mode Default** | `headless: false` | Launches real visible browser sessions by default for visual inspection during test development and debugging. |
-| **Viewport & Window Geometry** | `viewport: { width: 800, height: 700 }`<br>`launchOptions.args: ['--window-size=900,800', '--no-sandbox']` | Enforces a compact, standardized window/canvas footprint to prevent responsive UI layout drift and ensure container/CI compatibility. |
-| **CI/CD Guardrails** | `forbidOnly: !!process.env.CI`<br>`retries: process.env.CI ? 2 : 0`<br>`workers: process.env.CI ? 1 : undefined` | Prevents leftover `test.only` blocks from passing on CI, isolates CI runs to a single worker to prevent test data collision, and adds retries for transient CI latency. |
+| **Viewport & Window Geometry** | `viewport: { width: 800, height: 700 }`<br>`launchOptions.args: ['--window-size=900,800', '--no-sandbox']` | Enforces a compact, standardized window/canvas footprint to prevent responsive UI layout drift and ensure container compatibility. |
+| **Execution Flow & Concurrency** | `fullyParallel: false`<br>`workers: 2` | Runs tests in orderly alphabetical/numeric sequence (`1_` through `6_`) to respect data dependencies across user lifecycle stages. |
+| **Session State Default** | `storageState: 'playwright/.auth/user.json'` | Configures authenticated session as default for dashboard and profile tests; unauthenticated specs override this locally via `test.use()`. |
+| **CI/CD Guardrails** | `forbidOnly: !!process.env.CI`<br>`retries: process.env.CI ? 2 : 0` | Prevents leftover `test.only` blocks from passing on CI and adds automatic retries for transient CI latency. |
 | **Diagnostic Tracing** | `trace: 'on-first-retry'` | Captures detailed DOM/network/action traces on test failure retries without storage overhead on clean runs. |
-
-### Multi-Project Pipeline & Session Dependency Model
-
-Rather than standard browser cross-matrix execution, the `projects` array is configured as an **Auth-State Dependency Pipeline** with three distinct roles:
-
-1. **`setup` (`auth.setup.ts`):**
-   - **Filter:** `testMatch: /.*\.setup\.ts/`
-   - **Role:** Dedicated session creator. Authenticates once using latest test credentials from `utils/users.json` and dumps full session state (`localStorage`, cookies, JWT) into `playwright/.auth/user.json`.
-2. **`guest` (Unauthenticated Specs):**
-   - **Filter:** `testMatch: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /4_ResetPassword\.spec\.ts/]`
-   - **State:** `storageState: { cookies: [], origins: [] }`
-   - **Role:** Enforces a completely clean, unauthenticated browser session with zero cookie/token leakage. Runs without dependencies on `setup` to test registration, login form validation, and forgot-password requests.
-3. **`authenticated` (Dependent Feature Specs):**
-   - **Filter:** `testIgnore: [/1_Registration\.spec\.ts/, /2_Login\.spec\.ts/, /4_ResetPassword\.spec\.ts/, /.*\.setup\.ts/]` (matches `3_Dashboard.spec.ts` & `5_Profile.spec.ts`)
-   - **State & Dependency:** `storageState: 'playwright/.auth/user.json'` + `dependencies: ['setup']`
-   - **Role:** Injects cached session credentials to execute authenticated workflows directly without repetitive UI logins. Playwright guarantees that `setup` completes before `authenticated` starts.
 
 ---
 
 ## End-to-End Test Suite Sequence
 
-The test suite executes an end-to-end user lifecycle test workflow configured via Playwright projects in `playwright.config.ts`.
+The test suite executes a sequential, 6-phase end-to-end user lifecycle workflow where output credentials from earlier stages are dynamically consumed by subsequent phases:
 
 ### Execution Flow Diagram
 
@@ -88,32 +75,34 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
                                           v
                    +---------------------------------------------+
                    |  1. User Registration (1_Registration)      |
+                   |  - Run in guest session (empty storageState)|
                    |  - Generate synthetic user via PersonModel  |
                    |  - Fill registration form & submit          |
-                   |  - Fetch & verify Gmail registration email  |
+                   |  - Poll Gmail API until email is received   |
                    |  - Append credentials to utils/users.json   |
                    +---------------------------------------------+
                                           |
                                           v
                    +---------------------------------------------+
                    |  2. User Authentication (2_Login)           |
+                   |  - Run in guest session (empty storageState)|
                    |  - Load latest credentials from users.json  |
-                   |  - Perform login as guest session           |
-                   |  - Assert dashboard redirect (/user)        |
+                   |  - Perform login & assert dashboard redirect|
                    +---------------------------------------------+
                                           |
                                           v
                    +---------------------------------------------+
-                   |  3. Auth Setup Project (auth.setup)         |
+                   |  3. Global Auth Setup (3_Auth)              |
+                   |  - Clean guest context login                |
                    |  - Authenticate latest registered user      |
                    |  - Save storageState to .auth/user.json     |
                    +---------------------------------------------+
                                           |
                                           v
                    +---------------------------------------------+
-                   |  4. Expense Management (3_Dashboard)        |
+                   |  4. Expense Management (4_Dashboard)        |
                    |  - Reuse authenticated storageState session |
-                   |  - Add multiple cost items dynamically      |
+                   |  - Add 2 cost items dynamically             |
                    |  - Accept browser dialog confirmation       |
                    |  - Scrape paginated cost table & export CSV |
                    |  - Logout from dashboard menu               |
@@ -121,16 +110,17 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
                                           |
                                           v
                    +---------------------------------------------+
-                   |  5. Password Reset (4_ResetPassword)        |
-                   |  - Request reset email as guest user        |
-                   |  - Fetch reset link via Gmail REST API      |
-                   |  - Reset password with new Faker string     |
+                   |  5. Password Reset (5_ResetPassword)        |
+                   |  - Run in guest session (empty storageState)|
+                   |  - Request reset email for latest user      |
+                   |  - Poll Gmail API & extract reset link      |
+                   |  - Submit new password via reset URL        |
                    |  - Update new password in utils/users.json  |
                    +---------------------------------------------+
                                           |
                                           v
                    +---------------------------------------------+
-                   |  6. Profile Picture Upload (5_Profile)      |
+                   |  6. Profile Picture Upload (6_Profile)      |
                    |  - Access profile in authenticated session  |
                    |  - Trigger file chooser & upload avatar     |
                    |  - Verify updated image src attribute       |
@@ -142,42 +132,42 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
 ### Detailed Test Sequence & Scenarios
 
 #### 1. Phase 1 — User Registration (`1_Registration.spec.ts`)
-*Project: `guest`*
+*Context: Guest / Unauthenticated (`storageState: { cookies: [], origins: [] }`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
-| **P1** | `Doing registration` | Positive (E2E) | Generates dynamic user credentials (first name, last name, Gmail alias, password, phone number, address, gender) using `PersonModel`. Submits registration form at `/register`, waits for email dispatch, fetches the latest incoming email snippet via Gmail REST API (`fetchEmail()`), asserts receipt of confirmation from `"Road to Career"`, and appends the new record to `utils/users.json`. |
+| **P1** | `Doing registration` | Positive (E2E) | Generates dynamic user credentials (first name, last name, Gmail alias with random seed, password, phone number, address, gender) using `PersonModel`. Submits registration form at `/register`, uses `expect.poll()` to dynamically query the Gmail REST API for the confirmation email matching `to:${user.email}`, asserts receipt from `"Road to Career"`, and appends the new record to `utils/users.json`. |
 
 #### 2. Phase 2 — User Authentication (`2_Login.spec.ts`)
-*Project: `guest`*
+*Context: Guest / Unauthenticated (`storageState: { cookies: [], origins: [] }`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
 | **P1** | `Doing login` | Positive (E2E) | Reads the latest registered user credentials from `utils/users.json` and submits the login form at `/login`. Asserts successful login by verifying navigation to the user dashboard (`/user`). |
 
-#### 3. Phase 3 — Global Authentication Setup (`auth.setup.ts`)
-*Project: `setup`*
+#### 3. Phase 3 — Global Authentication Setup (`3_Auth.spec.ts`)
+*Context: Session Setup (`storageState: { cookies: [], origins: [] }`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
-| **Pre-Hook** | `authenticate` | Session Setup | Authenticates the latest user from `utils/users.json` on `/login`, verifies navigation to `/user`, and captures the complete browser authentication context (cookies, tokens, and `localStorage`) into `playwright/.auth/user.json` for authenticated project execution. |
+| **Pre-Hook** | `authenticate` | Session Setup | Authenticates the latest user from `utils/users.json` on `/login`, verifies navigation to `/user`, and captures the complete browser authentication context (cookies, tokens, and `localStorage`) into `playwright/.auth/user.json` for subsequent authenticated tests. |
 
-#### 4. Phase 4 — Expense Management & Table Scraping (`3_Dashboard.spec.ts`)
-*Project: `authenticated`*
+#### 4. Phase 4 — Expense Management & Table Scraping (`4_Dashboard.spec.ts`)
+*Context: Authenticated Session (Default `storageState`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
 | **P1** | `Adding 2 items` | Functional (E2E) | Launches dashboard under authenticated session. Iteratively creates 2 new expense entries with randomized book titles, amounts (1–1000), date (`2000-01-01`), month selection (`June`), and remarks. Handles browser confirmation dialogs (`dialog.accept()`). Automatically iterates across all pagination pages to scrape table records, exports them to `utils/dashboard_table.csv`, and performs user logout. |
 
-#### 5. Phase 5 — Password Recovery & Reset (`4_ResetPassword.spec.ts`)
-*Project: `guest`*
+#### 5. Phase 5 — Password Recovery & Reset (`5_ResetPassword.spec.ts`)
+*Context: Guest / Unauthenticated (`storageState: { cookies: [], origins: [] }`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
-| **P1** | `Reset Password` | Functional (E2E) | Loads the latest user email from `utils/users.json`, submits a password reset request at `/forgot-password`, calls `fetchResetEmail()` to extract the password reset link from Gmail API, navigates to the reset URL, inputs a new random password via Faker, submits the change, and writes the updated password back into `utils/users.json`. |
+| **P1** | `Reset Password` | Functional (E2E) | Loads the latest user email from `utils/users.json`, submits a password reset request at `/forgot-password`, uses `expect.poll()` to query the Gmail REST API for the reset email, extracts the reset link, navigates to the reset URL, inputs a new random password, submits the change, and writes the updated password back into `utils/users.json`. |
 
-#### 6. Phase 6 — Profile Picture Upload (`5_Profile.spec.ts`)
-*Project: `authenticated`*
+#### 6. Phase 6 — Profile Picture Upload (`6_Profile.spec.ts`)
+*Context: Authenticated Session (Default `storageState`)*
 
 | Priority | Test Name | Scenario Type | Description & Validation |
 | :---: | :--- | :---: | :--- |
@@ -191,7 +181,7 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
 | :--- | :--- |
 | `utils/users.json` | Centralized JSON store for registered test users. Accounts are dynamically appended during registration and updated during password reset. |
 | `playwright/.auth/user.json` | Saved browser session state (cookies, `localStorage`, and session tokens) for fast authenticated testing across dependent test suites. |
-| `services/gmailVerification.service.ts` | Gmail REST API integration service utilizing `GMAIL_ACCESS_TOKEN` from `.env` to fetch incoming verification emails and password reset links. |
+| `services/gmailVerification.service.ts` | Gmail REST API integration service utilizing `GMAIL_ACCESS_TOKEN` from `.env` with response validation, resource disposal, and recipient filtering. |
 | `userModel/person.model.ts` | Dynamic synthetic test data model generating realistic person details with `@faker-js/faker`. |
 | `resources/profile_photo.png` | Static test image artifact used for profile avatar upload validation. |
 | `utils/dashboard_table.csv` | Output dataset generated by table scraping logic during dashboard tests. |
@@ -216,7 +206,7 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
 - **Node.js:** Version 18.x or higher installed on your machine.
 - **npm:** Node Package Manager (bundled with Node.js).
 - **Google Chrome / Playwright Browsers:** Installed via `npx playwright install`.
-- **Gmail API Token (Optional / Required for Email Verification):** Valid Google OAuth2 access token with `https://www.googleapis.com/auth/gmail.readonly` scope configured in `.env` as `GMAIL_ACCESS_TOKEN`.
+- **Gmail API Token (Required for Email Verification & Password Reset):** Valid Google OAuth2 access token with `https://www.googleapis.com/auth/gmail.readonly` scope configured in `.env` as `GMAIL_ACCESS_TOKEN`.
 - **Network Access:** Stable internet connection to access the live web application (`https://dailyfinance.roadtocareer.net/`).
 
 ---
@@ -251,7 +241,7 @@ The test suite executes an end-to-end user lifecycle test workflow configured vi
 
 ### 1. Run Complete End-to-End Test Suite
 
-Executes all test projects configured in `playwright.config.ts`:
+Executes all test specifications in sequential order:
 
 - **Windows (PowerShell / CMD):**
   ```powershell
@@ -274,36 +264,26 @@ npx playwright test --headed=false
 To execute individual test scenarios:
 
 ```powershell
-# Run Registration test
+# Run 1. Registration & Email Verification test
 npx playwright test tests/1_Registration.spec.ts
 
-# Run Login test
+# Run 2. Login test
 npx playwright test tests/2_Login.spec.ts
 
-# Run Dashboard & Table Scraping test
-npx playwright test tests/3_Dashboard.spec.ts
+# Run 3. Auth Setup (Generates .auth/user.json)
+npx playwright test tests/3_Auth.spec.ts
 
-# Run Password Reset test
-npx playwright test tests/4_ResetPassword.spec.ts
+# Run 4. Dashboard & Table Scraping test
+npx playwright test tests/4_Dashboard.spec.ts
 
-# Run Profile Picture Upload test
-npx playwright test tests/5_Profile.spec.ts
+# Run 5. Password Reset test
+npx playwright test tests/5_ResetPassword.spec.ts
+
+# Run 6. Profile Picture Upload test
+npx playwright test tests/6_Profile.spec.ts
 ```
 
-### 4. Run Specific Project / State
-
-```powershell
-# Run Auth Setup only
-npx playwright test --project=setup
-
-# Run Guest (Unauthenticated) tests only
-npx playwright test --project=guest
-
-# Run Authenticated tests only
-npx playwright test --project=authenticated
-```
-
-### 5. Run Tests with Interactive UI Mode or Debugger
+### 4. Run Tests with Interactive UI Mode or Debugger
 
 ```powershell
 # Open interactive Playwright UI mode
@@ -313,7 +293,7 @@ npx playwright test --ui
 npx playwright test --debug
 ```
 
-### 6. View Test Execution Report
+### 5. View Test Execution Report
 
 ```powershell
 npx playwright show-report
@@ -337,14 +317,14 @@ dailyfinance-automation-playwright
 ├── resources/
 │   └── profile_photo.png                 # Sample image asset for profile upload testing
 ├── services/
-│   └── gmailVerification.service.ts      # Gmail REST API client for email & link verification
-├── tests/                                # Test specifications & setup
-│   ├── 1_Registration.spec.ts            # User registration & email verification test
-│   ├── 2_Login.spec.ts                   # User authentication validation test
-│   ├── 3_Dashboard.spec.ts               # Expense creation, table scraping & CSV export test
-│   ├── 4_ResetPassword.spec.ts           # Forgot password & reset link workflow test
-│   ├── 5_Profile.spec.ts                 # Profile image upload validation test
-│   └── auth.setup.ts                     # Global authentication setup script
+│   └── gmailVerification.service.ts      # Resilient Gmail REST API client with query filters & status checks
+├── tests/                                # Sequential E2E test specifications
+│   ├── 1_Registration.spec.ts            # Phase 1: User registration & dynamic Gmail polling
+│   ├── 2_Login.spec.ts                   # Phase 2: User authentication validation test
+│   ├── 3_Auth.spec.ts                    # Phase 3: Global authentication setup script
+│   ├── 4_Dashboard.spec.ts               # Phase 4: Expense creation, table scraping & CSV export test
+│   ├── 5_ResetPassword.spec.ts           # Phase 5: Forgot password & reset link polling workflow
+│   └── 6_Profile.spec.ts                 # Phase 6: Profile image upload validation test
 ├── userModel/
 │   └── person.model.ts                   # Synthetic user data model using Faker.js
 ├── utils/
@@ -353,7 +333,7 @@ dailyfinance-automation-playwright
 ├── .env                                  # Environment secrets (Gmail API token)
 ├── package.json                          # Node dependencies & project metadata
 ├── package-lock.json                     # Locked dependency tree
-├── playwright.config.ts                  # Playwright Test configuration & project definitions
+├── playwright.config.ts                  # Playwright Test configuration
 └── README.md                             # Project documentation
 ```
 

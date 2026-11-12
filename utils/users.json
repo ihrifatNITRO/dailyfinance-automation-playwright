@@ -39,9 +39,72 @@
     "firstName": "Felicita",
     "lastName": "Bins",
     "email": "ihrifat.rr+48@gmail.com",
-    "password": "3OJzTcU62n9J3P6",
+    "password": "92TjhP0z4tntHg8",
     "phoneNumber": "01774721124",
     "address": "20768 Boehm-Will Trafficway Apt. 978",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Mireya",
+    "lastName": "Stiedemann",
+    "email": "ihrifat.rr+100@gmail.com",
+    "password": "M5wdsTqaReLJJYa",
+    "phoneNumber": "01770519969",
+    "address": "550 Poplar Street Apt. 883",
+    "gender": "Female"
+  },
+  {
+    "firstName": "Eliza",
+    "lastName": "Stoltenberg",
+    "email": "ihrifat.rr+72@gmail.com",
+    "password": "9EJJN1nzlQiEQMd",
+    "phoneNumber": "01799085735",
+    "address": "4896 West Lane Suite 431",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Sandrine",
+    "lastName": "Smith",
+    "email": "ihrifat.rr+50@gmail.com",
+    "password": "hihBkLmH6u1J9sm",
+    "phoneNumber": "01787012136",
+    "address": "15918 Loma Trafficway Apt. 168",
+    "gender": "Female"
+  },
+  {
+    "firstName": "Zackary",
+    "lastName": "Beatty",
+    "email": "ihrifat.rr+27@gmail.com",
+    "password": "FlbWYL3IfDERo88",
+    "phoneNumber": "01759844227",
+    "address": "3127 Chestnut Close Apt. 471",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Bernard",
+    "lastName": "Lueilwitz",
+    "email": "ihrifat.rr+69@gmail.com",
+    "password": "15h3ghACqOqfsp_",
+    "phoneNumber": "01752122048",
+    "address": "21517 Noemy Meadow Apt. 548",
+    "gender": "Male"
+  },
+  {
+    "firstName": "Ivah",
+    "lastName": "Schinner",
+    "email": "ihrifat.rr+4@gmail.com",
+    "password": "hZ1MJoTmB93HYKg",
+    "phoneNumber": "01795371738",
+    "address": "54692 Fermin Motorway Apt. 310",
+    "gender": "Female"
+  },
+  {
+    "firstName": "Carlee",
+    "lastName": "Huel",
+    "email": "ihrifat.rr+7030@gmail.com",
+    "password": "uFOVrjwjih1d0pP",
+    "phoneNumber": "01752115536",
+    "address": "8983 Heron Close Apt. 156",
     "gender": "Male"
   }
 ]

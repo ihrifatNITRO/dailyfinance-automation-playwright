@@ -12,14 +12,23 @@ test('Doing registration', async ({ page }) => {
   const registrationPage = new RegistrationPage(page);
   const randomUser = new PersonModel();
 
-  // set up registration url and go for registration
+  // Navigate to registration page and submit registration form
   await page.goto('/register');
   await registrationPage.fillRegistration(randomUser);
 
-  // give 5s for registration email to be appeared
-  await page.waitForTimeout(5000);
-  const emailData = await fetchEmail();
-  expect(emailData).toContain("Road to Career");
+  // Poll Gmail until the registration email arrives (Playwright best practice over static waitForTimeout)
+  // Checks every 2 seconds for up to 30 seconds
+  await expect.poll(async () => {
+    try {
+      return await fetchEmail(`to:${randomUser.email}`);
+    } catch {
+      return null;
+    }
+  }, {
+    message: "Registration email was not received within the timeout period.",
+    timeout: 30_000,
+    intervals: [2_000]
+  }).toContain("Road to Career");
 
   // reading from users.json
   const rawData = fs.readFileSync('utils/users.json', 'utf8');
@@ -29,5 +38,5 @@ test('Doing registration', async ({ page }) => {
   // writing back to users.json
   fs.writeFileSync('utils/users.json', JSON.stringify(users, null, 2));
 
-  await page.pause();
+  // await page.pause();
 })

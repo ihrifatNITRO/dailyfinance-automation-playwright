@@ -1,5 +1,6 @@
 import {expect, test} from "@playwright/test";
 import {ProfilePage} from "../pages/Profile.page";
+// @ts-ignore
 import path from "path";
 
 test("Upload Profile Picture", async ({page}) => {

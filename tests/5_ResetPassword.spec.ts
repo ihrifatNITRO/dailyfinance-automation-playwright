@@ -14,23 +14,34 @@ test("Reset Password", async ({page}) => {
     const users = JSON.parse(rawData);
     const latestUser = users[users.length - 1];
 
-    // sending reset request
+    // Send password reset request
     await page.goto('/forgot-password');
     await resetPassword.sentResetEmail(latestUser.email);
-    // waiting for reset email to be arrived for 5s
-    await page.waitForTimeout(5000);
-    // fetching & clicking the reset link from gmail
-    const resetLink = await fetchResetEmail();
-    expect(resetLink).toBeTruthy(); //Guarantees the email & link were found
 
-    if(resetLink) {
+    // Poll Gmail until the reset email arrives and extract the reset link
+    // Retries every 2 seconds for up to 30 seconds
+    let resetLink: string | null = null;
+    await expect.poll(async () => {
+        try {
+            resetLink = await fetchResetEmail(`to:${latestUser.email}`);
+            return resetLink;
+        } catch {
+            return null;
+        }
+    }, {
+        message: "Password reset email was not received within the timeout period.",
+        timeout: 30_000,
+        intervals: [2_000]
+    }).toBeTruthy();
+
+    if (resetLink) {
         await page.goto(resetLink);
     }
     // resetting new password
     const newPassword = await resetPassword.resetPassword();
 
     // wait for password reset to complete on server
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // updating/writing the new password to users.json
     latestUser.password = newPassword;
