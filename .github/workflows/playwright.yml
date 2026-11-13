@@ -5,7 +5,7 @@ on:
   pull_request:
     branches: [ main, master ]
   schedule:
-    - cron: '*/5 * * * *' # TEMP: verify schedule fires (GitHub minimum ~5 min). Revert to '59 17 * * 5' after verification.
+    - cron: '59 17 * * 5' # Friday 11:59 PM Asia/Dhaka (UTC+6) = 17:59 UTC
   workflow_dispatch:
 jobs:
   test:
