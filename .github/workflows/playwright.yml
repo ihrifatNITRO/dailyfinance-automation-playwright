@@ -4,6 +4,9 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  schedule:
+    - cron: '*/5 * * * *' # TEMP: verify schedule fires (GitHub minimum ~5 min). Revert to '59 17 * * 5' after verification.
+  workflow_dispatch:
 jobs:
   test:
     timeout-minutes: 60
@@ -19,6 +22,8 @@ jobs:
       run: npx playwright install --with-deps
     - name: Run Playwright tests
       run: npx playwright test
+      env:
+        GMAIL_ACCESS_TOKEN: ${{ secrets.GMAIL_ACCESS_TOKEN }}
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
