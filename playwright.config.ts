@@ -19,14 +19,14 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Enforce 1 worker for sequential execution */
-  workers: 2,
+  /* Enforce 1 worker for sequential (file/numeric) execution order */
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all tests */
   use: {
-    /* Run browser in headless mode */
-    headless: false,
+    /* Run browser in headless mode on CI (no display/X server), headed locally */
+    headless: !!process.env.CI,
     /* Base URL to use in actions like `await page.goto('')`. */
     baseURL: 'https://dailyfinance.roadtocareer.net/',
     // 1. Force the internal webpage canvas area to be small

@@ -22,6 +22,8 @@ setup('authenticate', async ({page}) => {
     await page.goto('/login');
     await loginPage.fillLogin(lastUser.email, lastUser.password);
     await expect(page).toHaveURL(/\/user$/);
+    // ensure playwright/.auth/ exists on a fresh CI checkout
+    fs.mkdirSync('playwright/.auth', { recursive: true });
     // automatically captures localStorage authToken & cookies to file
     await page.context().storageState({path: authFile})
 
